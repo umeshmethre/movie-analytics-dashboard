@@ -3,7 +3,7 @@
 An interactive Movie Analytics Dashboard built using Streamlit for data visualization and insights.
 
 ## 🚀 Live Demo
-🔗 https://data-science-eqbozx52kzhwvyjgw4zh.streamlit.app
+🔗 https://data-science-eqbozx52kzhwvyjgwuw4zh.streamlit.app/
 
 ## 📌 Features
 - Genre-based filtering
