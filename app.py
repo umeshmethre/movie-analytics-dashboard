@@ -63,7 +63,14 @@ genre = st.sidebar.selectbox(
 
 search_movie = st.sidebar.text_input("Search Movie")
 
-filtered_df = df[df["Genre"] == genre]
+filtered_df = df.copy()
+
+if search_movie:
+    filtered_df = filtered_df[
+        filtered_df["Title"].str.contains(search_movie, case=False, na=False)
+    ]
+
+filtered_df = filtered_df[filtered_df["Genre"] == genre]
 
 # ------------------------------
 # Search Results
