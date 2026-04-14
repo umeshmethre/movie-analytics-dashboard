@@ -1,22 +1,24 @@
 # 🎬 Movie Analytics Dashboard
 
-An interactive web application built using Streamlit to analyze and visualize movie datasets.
+An interactive Movie Analytics Dashboard built using Streamlit for data visualization and insights.
 
-## 🚀 Features
-- 🎭 Genre-based filtering
-- 🔍 Search movies
-- 📊 Interactive charts (ratings, popularity)
-- 📈 KPI metrics (average rating, total movies)
-- 📥 Download filtered data
+## 🚀 Live Demo
+🔗 https://data-science-eqbozx52kzhwvyjgw4zh.streamlit.app
+
+## 📌 Features
+- Genre-based filtering
+- Movie search functionality
+- KPI metrics (Total Movies, Average Rating, Popularity)
+- Interactive charts
+- Download filtered dataset
 
 ## 🛠 Tech Stack
 - Python
 - Streamlit
 - Pandas
-- Plotly
+- Matplotlib
 
-## ▶️ How to Run
-
+## ▶️ How to Run Locally
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
