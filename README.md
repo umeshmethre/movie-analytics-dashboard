@@ -8,9 +8,9 @@ An interactive Movie Analytics Dashboard built using Streamlit for data visualiz
 ## 📌 Features
 - Genre-based filtering
 - Movie search functionality
-- KPI metrics (Total Movies, Average Rating, Popularity)
-- Interactive charts
-- Download filtered dataset
+- KPI metrics (ratings, popularity)
+- Data visualization using charts
+- 🎯 Movie Recommendation System (based on similarity)
 
 ## 🛠 Tech Stack
 - Python
