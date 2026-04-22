@@ -1,180 +1,251 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-sns.set_style("darkgrid")
 
-# ML
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # ------------------------------
-# Page Config
+# PAGE CONFIG
 # ------------------------------
-st.set_page_config(
-    page_title="Movie Analytics Dashboard",
-    layout="wide",
-    page_icon="🎬"
-)
-
-st.title("🎬 Movie Analytics Dashboard")
-st.markdown("### 📊 Final Year Data Analytics Project")
+st.set_page_config(page_title="Movie Analytics System", layout="wide")
 
 # ------------------------------
-# Load Dataset (SAFE VERSION)
+# LOAD DATA
 # ------------------------------
 @st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv(
-            "movies.csv",
-            sep=",",
-            engine="python",
-            encoding="utf-8",
-            quotechar='"',
-            on_bad_lines='skip'
-        )
+    df = pd.read_csv(
+        "movies.csv",
+        encoding="latin1",
+        engine="python",
+        on_bad_lines="skip"
+    )
 
-        df.columns = df.columns.str.strip()
+    df.columns = df.columns.str.strip()
 
-        # Required columns
-        required = ["Title", "Genre", "Popularity", "Vote_Average", "Vote_Count"]
+    # Fix numeric columns
+    df["Vote_Average"] = pd.to_numeric(df["Vote_Average"], errors="coerce")
+    df["Popularity"] = pd.to_numeric(df["Popularity"], errors="coerce")
+    df["Vote_Count"] = pd.to_numeric(df["Vote_Count"], errors="coerce")
 
-        for col in required:
-            if col not in df.columns:
-                return pd.DataFrame()
+    # Fix text columns
+    df["Genre"] = df["Genre"].fillna("")
+    df["Overview"] = df.get("Overview", "").fillna("")
+    df["Title"] = df["Title"].fillna("Unknown")
 
-        # Convert numeric safely
-        df["Vote_Average"] = pd.to_numeric(df["Vote_Average"], errors="coerce")
-        df["Popularity"] = pd.to_numeric(df["Popularity"], errors="coerce")
-        df["Vote_Count"] = pd.to_numeric(df["Vote_Count"], errors="coerce")
+    df.dropna(subset=["Vote_Average", "Popularity"], inplace=True)
 
-        df.dropna(inplace=True)
-
-        return df
-
-    except Exception as e:
-        return pd.DataFrame()
+    return df
 
 df = load_data()
 
-# STOP if data fails
 if df.empty:
-    st.error("❌ Data failed to load. Check CSV format.")
+    st.error("❌ Data failed to load")
     st.stop()
 
 # ------------------------------
-# KPI SECTION
+# SIDEBAR NAVIGATION
 # ------------------------------
-col1, col2, col3 = st.columns(3)
+st.sidebar.title("🎬 Navigation")
 
-col1.metric("🎬 Total Movies", len(df))
-col2.metric("⭐ Avg Rating", round(df["Vote_Average"].mean(), 2))
-col3.metric("🔥 Max Popularity", round(df["Popularity"].max(), 2))
-
-# ------------------------------
-# SIDEBAR FILTERS
-# ------------------------------
-st.sidebar.header("🔍 Filters")
-
-genre = st.sidebar.selectbox(
-    "Select Genre",
-    sorted(df["Genre"].dropna().unique())
+page = st.sidebar.radio(
+    "Go to",
+    ["🏠 Home", "📊 Dashboard", "📈 Trends", "🤖 Recommendations"]
 )
 
-search = st.sidebar.text_input("Search Movie")
+# ------------------------------
+# 🏠 HOME PAGE
+# ------------------------------
+if page == "🏠 Home":
 
-# Filter
-filtered_df = df[df["Genre"] == genre]
+    st.title("🎬 Movie Analytics & Recommendation System")
 
-if search:
-    filtered_df = filtered_df[
-        filtered_df["Title"].str.contains(search, case=False, na=False)
+    st.markdown("""
+    ###  📊 Data-Driven Movie Insights & AI Recommendations
+
+    - 📊 Data Analytics Dashboard  
+    - 📈 Trend Analysis  
+    - 🤖 AI Recommendation System  
+    """)
+
+    # 🔍 Search
+    st.subheader("🔍 Search Movies")
+
+    search = st.text_input("Enter movie name")
+
+    if search:
+        results = df[df["Title"].str.contains(search, case=False, na=False)]
+
+        st.write(f"🔎 {len(results)} results found")
+
+        if not results.empty:
+            cols = st.columns(4)
+
+            for i, (_, row) in enumerate(results.head(12).iterrows()):
+                with cols[i % 4]:
+                    st.image(row["Poster_Url"], use_container_width=True)
+                    st.caption(f"{row['Title']} ⭐ {row['Vote_Average']}")
+
+    # 🔥 Trending
+    st.subheader("🔥 Trending Movies")
+
+    trending = df.sort_values("Popularity", ascending=False).head(8)
+
+    cols = st.columns(4)
+
+    for i, (_, row) in enumerate(trending.iterrows()):
+        with cols[i % 4]:
+            st.image(row["Poster_Url"], use_container_width=True)
+            st.caption(row["Title"])
+
+# ------------------------------
+# 📊 DASHBOARD PAGE
+# ------------------------------
+elif page == "📊 Dashboard":
+
+    st.title("📊 Movie Analytics Dashboard")
+
+    # KPIs
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("Total Movies", len(df))
+    col2.metric("Average Rating", round(df["Vote_Average"].mean(skipna=True), 2))
+    col3.metric("Max Popularity", round(df["Popularity"].max(), 2))
+
+    # Filters
+    st.subheader("🎯 Filters")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        genre = st.selectbox("Genre", df["Genre"].unique())
+
+    with col2:
+        min_rating = st.slider("Min Rating", 0.0, 10.0, 5.0)
+
+    with col3:
+        min_pop = st.slider("Min Popularity", 0.0, float(df["Popularity"].max()), 10.0)
+
+    filtered_df = df[
+        (df["Genre"] == genre) &
+        (df["Vote_Average"] >= min_rating) &
+        (df["Popularity"] >= min_pop)
     ]
 
-# ------------------------------
-# DISPLAY DATA
-# ------------------------------
-st.subheader(f"🎥 Movies in {genre}")
+    st.write(f"Filtered Movies: {len(filtered_df)}")
 
-if filtered_df.empty:
-    st.warning("No movies found")
-else:
-    st.dataframe(filtered_df.head(50))
+    # Charts
+    st.subheader("📈 Popularity Distribution")
 
-# Download
-st.download_button(
-    "⬇ Download Data",
-    filtered_df.to_csv(index=False),
-    "movies.csv"
-)
+    fig, ax = plt.subplots()
+    ax.hist(filtered_df["Popularity"], bins=15)
+    st.pyplot(fig)
 
-# ------------------------------
-# POPULARITY GRAPH
-# ------------------------------
-st.subheader("📊 Popularity Distribution")
+    st.subheader("🏆 Top Movies")
 
-fig, ax = plt.subplots()
-ax.hist(filtered_df["Popularity"], bins=10)
-ax.set_xlabel("Popularity")
-ax.set_ylabel("Count")
-st.pyplot(fig)
+    top10 = filtered_df.sort_values("Popularity", ascending=False).head(10)
+    st.bar_chart(top10.set_index("Title")["Popularity"])
 
-# ------------------------------
-# TOP 10 MOVIES
-# ------------------------------
-st.subheader("🏆 Top 10 Movies")
+    st.subheader("📊 Rating vs Popularity")
+    st.scatter_chart(filtered_df, x="Vote_Average", y="Popularity")
 
-top10 = df.sort_values("Popularity", ascending=False).head(10)
+    # Genre Pie Chart
+    st.subheader("🎭 Genre Breakdown")
 
-st.bar_chart(top10.set_index("Title")["Popularity"])
+    genre_counts = df["Genre"].value_counts().head(10)
+
+    fig2, ax2 = plt.subplots()
+    ax2.pie(genre_counts, labels=genre_counts.index, autopct='%1.1f%%')
+    st.pyplot(fig2)
+
+    # Top Rated
+    st.subheader("⭐ Top Rated Movies")
+
+    top_rated = df.sort_values("Vote_Average", ascending=False).head(10)
+    st.dataframe(top_rated[["Title", "Vote_Average"]])
 
 # ------------------------------
-# 🎬 ML RECOMMENDATION SYSTEM
+# 📈 TRENDS PAGE
 # ------------------------------
-st.subheader("🤖 AI Movie Recommendation")
+elif page == "📈 Trends":
 
-try:
-    df["combined"] = df["Genre"].astype(str)
+    st.title("📈 Movie Trends & Insights")
 
-    cv = CountVectorizer()
+    # Year-wise trend
+    if "Release_Date" in df.columns:
+        df["Year"] = pd.to_datetime(df["Release_Date"], errors="coerce").dt.year
+        yearly = df["Year"].value_counts().sort_index()
+        st.line_chart(yearly)
+    else:
+        st.info("Year data not available")
+
+    # Genre Distribution
+    st.subheader("🎭 Genre Distribution")
+
+    genre_counts = df["Genre"].value_counts().head(10)
+
+    fig, ax = plt.subplots()
+    ax.pie(genre_counts, labels=genre_counts.index, autopct='%1.1f%%')
+    st.pyplot(fig)
+
+    # Rating Distribution
+    st.subheader("⭐ Rating Distribution")
+
+    fig2, ax2 = plt.subplots()
+    ax2.hist(df["Vote_Average"], bins=20)
+    st.pyplot(fig2)
+
+    # Insights
+    st.subheader("📌 Key Insights")
+
+    st.markdown(f"""
+    - Total Movies: {len(df)}
+    - Most Common Genre: {df['Genre'].mode()[0]}
+    - Highest Rated Movie: {df.loc[df['Vote_Average'].idxmax()]['Title']}
+    - Most Popular Movie: {df.loc[df['Popularity'].idxmax()]['Title']}
+    """)
+
+# ------------------------------
+# 🤖 RECOMMENDATION PAGE
+# ------------------------------
+elif page == "🤖 Recommendations":
+
+    st.title("🤖 AI Movie Recommendation System")
+
+    # Prepare ML
+    df["combined"] = (df["Genre"] + " " + df["Overview"]).fillna("")
+
+    cv = CountVectorizer(stop_words='english')
     matrix = cv.fit_transform(df["combined"])
 
     similarity = cosine_similarity(matrix)
 
     movie_list = df["Title"].values
-
-    selected_movie = st.selectbox("Choose a movie", movie_list)
+    selected_movie = st.selectbox("Select a movie", movie_list)
 
     def recommend(movie):
         idx = df[df["Title"] == movie].index[0]
-        distances = list(enumerate(similarity[idx]))
-        movies = sorted(distances, key=lambda x: x[1], reverse=True)[1:6]
+        distances = similarity[idx]
 
-        return [df.iloc[i[0]].Title for i in movies]
+        movie_indices = distances.argsort()[-6:-1][::-1]
 
-    if st.button("Recommend"):
-        results = recommend(selected_movie)
+        results = []
+        for i in movie_indices:
+            results.append((df.iloc[i], distances[i]))
 
-        for m in results:
-            st.write("👉", m)
+        return results
 
-except:
-    st.warning("Recommendation system unavailable")
+    if st.button("Recommend Movies"):
 
-# ------------------------------
-# POSTERS (OPTIONAL SAFE)
-# ------------------------------
-st.subheader("🎬 Movie Posters")
+        st.write(f"Because you watched **{selected_movie}**, you may like:")
 
-if "Poster_Url" in df.columns:
-    sample = df.head(6)
+        recommendations = recommend(selected_movie)
 
-    cols = st.columns(3)
+        cols = st.columns(5)
 
-    for i, (_, row) in enumerate(sample.iterrows()):
-        with cols[i % 3]:
-            st.image(row["Poster_Url"], width=200)
-            st.caption(row["Title"])
-else:
-    st.info("Poster data not available")
+        for i, (row, score) in enumerate(recommendations):
+            with cols[i]:
+                st.image(row["Poster_Url"], use_container_width=True)
+                st.caption(row["Title"])
+                st.caption(f"Similarity: {round(score*100,2)}%")
